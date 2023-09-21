@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- Additional size optimizations -->
+    <OptimizationPreference>Size</OptimizationPreference>
+    <StackTraceSupport>false</StackTraceSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- PdfSharp is not annotated for trimming, but this seems to fix it -->
+    <TrimmerRootAssembly Include="PdfSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Publish with in-memory decompression -->
+    <PackageReference Include="PublishAotCompressed" Version="1.0.2" Condition="!$(RuntimeIdentifier.Contains('osx-'))" />
+
+    <!-- The library to manipulate PDFs -->
+    <PackageReference Include="PDFsharp" Version="6.0.0-preview-3" />
+
+    <!-- PdfSharp depends on old versions of these, upgrade them to 8.0 -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0-rc.1.23419.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.0-rc.1.23419.4" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0-rc.1.23419.4" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="8.0.0-rc.1.23419.4" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0-rc.1.23419.4" />
+  </ItemGroup>
+
+</Project>

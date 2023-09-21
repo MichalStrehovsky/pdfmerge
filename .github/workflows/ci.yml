@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ master ]
+
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version to create'     
+        required: true
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            runner: ubuntu-20.04
+          - os: windows
+            runner: windows-latest
+          - os: macos
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
+    name: Build ${{ matrix.os }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+          dotnet-quality: 'preview'
+      - name: Publish
+        run: |
+          dotnet publish -o out
+      - name: Upload binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: pdfmerge-${{ matrix.os }}-x64
+          path: |
+            out/
+            !out/*.pdb
+            !out/*.dbg
+            !out/*.dsym/**
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Publish release
+    if: ${{ github.event.inputs.version != '' && github.actor == 'MichalStrehovsky' }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          release_name: v${{ github.event.inputs.version }}
+          draft: true
+      - name: Create tag
+        run: |
+          git tag v${{ github.event.inputs.version }}
+          git push origin v${{ github.event.inputs.version }}
+      - name: ZIP up
+        run: |
+          (cd pdfmerge-windows-x64 && zip -r ../pdfmerge-${{ github.event.inputs.version }}-windows-x64.zip .)
+          (cd pdfmerge-linux-x64 && zip -r ../pdfmerge-${{ github.event.inputs.version }}-linux-x64.zip .)
+          (cd pdfmerge-macos-x64 && zip -r ../pdfmerge-${{ github.event.inputs.version }}-macos-x64.zip .)
+      - name: Upload windows-x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: pdfmerge-${{ github.event.inputs.version }}-windows-x64.zip
+          asset_name: pdfmerge-${{ github.event.inputs.version }}-windows-x64.zip
+          asset_content_type: application/zip
+      - name: Upload linux-x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: pdfmerge-${{ github.event.inputs.version }}-linux-x64.zip
+          asset_name: pdfmerge-${{ github.event.inputs.version }}-linux-x64.zip
+          asset_content_type: application/zip
+      - name: Upload macos-x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: pdfmerge-${{ github.event.inputs.version }}-macos-x64.zip
+          asset_name: pdfmerge-${{ github.event.inputs.version }}-macos-x64.zip
+          asset_content_type: application/zip
